@@ -202,7 +202,6 @@ function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: 
   const pathOpacity = isSelected ? 0.7 : 0.3;
 
   const planetColor = isSelected ? "#ffffff" : visuals.tintColor;
-  const planetEmissive = isSelected ? pClass.color : "#000000";
 
   return (
     <group>

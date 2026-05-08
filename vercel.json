@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/TAP/sync",
+      "destination": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

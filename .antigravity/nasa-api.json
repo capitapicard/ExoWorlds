@@ -1,0 +1,14 @@
+{
+    "project": "NASA Exoplanet Explorer",
+    "base_url": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync",
+    "default_query": "select+pl_name,hostname,pl_orbper,pl_orbeccen,pl_orbsmax,pl_rade,st_teff+from+ps",
+    "field_mapping": {
+        "pl_name": "Planet Name",
+        "pl_orbper": "Orbital Period (Days)",
+        "pl_orbeccen": "Eccentricity",
+        "pl_orbsmax": "Semi-major Axis (AU)",
+        "pl_rade": "Planet Radius (Earth Radii)",
+        "st_teff": "Host Star Temperature (K)"
+    },
+    "proxy_requirement": "Node.js backend must handle API requests to avoid CORS headers issues from Caltech servers."
+}

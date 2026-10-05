@@ -1,31 +1,33 @@
+import type { PlanetData } from '../api/nasaApi';
+
 export interface PlanetClass {
   label: string;
   color: string;
 }
 
-export function classifyPlanet(planet: any): PlanetClass {
-  const m = planet.pl_bmasse; // Earth masses
-  const r = planet.pl_rade;   // Earth radii
-  const t = planet.pl_eqt;    // Temperature in Kelvin
+export function classifyPlanet(planet: Partial<PlanetData>): PlanetClass {
+  const m = planet.pl_bmasse ?? null; // Earth masses
+  const r = planet.pl_rade ?? null;   // Earth radii
+  const t = planet.pl_eqt ?? null;    // Temperature in Kelvin
 
   // Hot Jupiter
-  if ((m > 50 || r > 6) && t > 1000) {
+  if (((m !== null && m > 50) || (r !== null && r > 6)) && t !== null && t > 1000) {
     return { label: 'Hot Jupiter', color: '#ef4444' }; // Red
   }
   // Cold Gas Giant
-  if (m > 50 || r > 6) {
+  if ((m !== null && m > 50) || (r !== null && r > 6)) {
     return { label: 'Gas Giant', color: '#f59e0b' }; // Orange
   }
   // Ice Giant / Neptune-like
-  if ((m >= 10 && m <= 50) || (r >= 3 && r <= 6)) {
+  if ((m !== null && m >= 10 && m <= 50) || (r !== null && r >= 3 && r <= 6)) {
     return { label: 'Ice Giant', color: '#06b6d4' }; // Cyan
   }
   // Hot Super-Earth / Lava World
-  if (m < 10 && t > 1000) {
+  if (m !== null && m < 10 && t !== null && t > 1000) {
     return { label: 'Lava World', color: '#b91c1c' }; // Dark Red
   }
   // Super-Earth
-  if ((m >= 2 && m < 10) || (r >= 1.25 && r < 3)) {
+  if ((m !== null && m >= 2 && m < 10) || (r !== null && r >= 1.25 && r < 3)) {
     return { label: 'Super-Earth', color: '#10b981' }; // Emerald Green
   }
   // Terrestrial / Rocky
@@ -37,7 +39,7 @@ export function classifyPlanet(planet: any): PlanetClass {
   return { label: 'Unknown Type', color: '#64748b' }; // Slate
 }
 
-export function getPlanetRadius(planet: any): { radius: number, isEstimated: boolean, isUnknown: boolean } {
+export function getPlanetRadius(planet: Partial<PlanetData>): { radius: number, isEstimated: boolean, isUnknown: boolean } {
   // If we already have the radius, use it.
   if (planet.pl_rade && planet.pl_rade > 0) {
     return { radius: planet.pl_rade, isEstimated: false, isUnknown: false };
@@ -97,8 +99,8 @@ export interface PlanetVisuals {
   tintColor: string;
 }
 
-export function getPlanetVisuals(planet: any): PlanetVisuals {
-  const t = planet.pl_eqt;    // Temperature in Kelvin
+export function getPlanetVisuals(planet: Partial<PlanetData>): PlanetVisuals {
+  const t = planet.pl_eqt ?? null;    // Temperature in Kelvin
 
   const baseClass = classifyPlanet(planet).label;
   

@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, OrbitControls, Stars, Line, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { usePlanetStore } from '../store/usePlanetStore';
+import type { PlanetData } from '../api/nasaApi';
 import { classifyPlanet, getPlanetVisuals } from '../utils/classification';
 import { Orbit as OrbitIcon, Play, Square, Sun, Loader2 } from 'lucide-react';
 
@@ -17,7 +18,7 @@ const SOLAR_SYSTEM = [
   { pl_name: 'Neptune', pl_orbsmax: 30.047, pl_orbeccen: 0.0113, pl_orbper: 59800, color: '#2563eb' }
 ];
 
-function CentralStar({ planets }: { planets: any[] }) {
+function CentralStar({ planets }: { planets: Partial<PlanetData>[] }) {
   const starRef = useRef<THREE.Mesh>(null);
   const setSelectedPlanet = usePlanetStore(state => state.setSelectedPlanet);
   
@@ -45,7 +46,7 @@ function CentralStar({ planets }: { planets: any[] }) {
         <Billboard>
           <Text 
             position={[0, -1.2, 0]} 
-            fontSize={1.1} 
+            fontSize={1.32} 
             color="#fcd34d" 
             anchorX="center" 
             anchorY="top"
@@ -58,7 +59,7 @@ function CentralStar({ planets }: { planets: any[] }) {
   );
 }
 
-function HabitableZone({ planets, orbitScale }: { planets: any[], orbitScale: number }) {
+function HabitableZone({ planets, orbitScale }: { planets: Partial<PlanetData>[], orbitScale: number }) {
   if (planets.length === 0) return null;
   const star = planets[0]; // Take the first planet to get star properties
   
@@ -83,14 +84,31 @@ function HabitableZone({ planets, orbitScale }: { planets: any[], orbitScale: nu
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[innerRadius, outerRadius, 64]} />
-      <meshBasicMaterial color="#16a34a" transparent opacity={0.06} side={THREE.DoubleSide} />
+      <meshBasicMaterial color="#16a34a" transparent opacity={0.075} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
-function SolarPlanetOrbit({ planet, isAnimating, maxBoundary, orbitScale }: { planet: any, isAnimating: boolean, maxBoundary: number, orbitScale: number }) {
+interface SolarPlanetData {
+  pl_name: string;
+  pl_orbsmax: number;
+  pl_orbeccen: number;
+  pl_orbper: number;
+  color: string;
+}
+
+function getInitialOrbitOffset(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return ((Math.abs(hash) % 1000) / 1000) * Math.PI * 2;
+}
+
+function SolarPlanetOrbit({ planet, isAnimating, maxBoundary, orbitScale }: { planet: SolarPlanetData, isAnimating: boolean, maxBoundary: number, orbitScale: number }) {
   const planetRef = useRef<THREE.Mesh>(null);
-  const progress = useRef(Math.random() * Math.PI * 2);
+  const progress = useRef(getInitialOrbitOffset(planet.pl_name));
   
   const rawAu = planet.pl_orbsmax;
   
@@ -108,7 +126,7 @@ function SolarPlanetOrbit({ planet, isAnimating, maxBoundary, orbitScale }: { pl
       0
     );
     return curve.getPoints(100).map(p => new THREE.Vector3(p.x, 0, p.y));
-  }, [semiMajorAxis, semiMinorAxis]);
+  }, [semiMajorAxis, semiMinorAxis, eccentricity]);
 
   const speed = planet.pl_orbper ? (365 / planet.pl_orbper) * 0.2 : 0.05;
 
@@ -137,7 +155,7 @@ function SolarPlanetOrbit({ planet, isAnimating, maxBoundary, orbitScale }: { pl
         <meshBasicMaterial 
           color={planet.color} 
         /><Billboard>
-          <Text position={[0, -0.8, 0]} fontSize={0.75} color={planet.color} anchorX="center" anchorY="top">
+          <Text position={[0, -0.8, 0]} fontSize={0.9} color={planet.color} anchorX="center" anchorY="top">
             {planet.pl_name}
           </Text>
         </Billboard>
@@ -146,10 +164,10 @@ function SolarPlanetOrbit({ planet, isAnimating, maxBoundary, orbitScale }: { pl
   );
 }
 
-function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: any, isAnimating: boolean, isSelected: boolean, orbitScale: number }) {
+function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: Partial<PlanetData> & { pl_name: string }, isAnimating: boolean, isSelected: boolean, orbitScale: number }) {
   const setSelectedPlanet = usePlanetStore(state => state.setSelectedPlanet);
   const planetRef = useRef<THREE.Mesh>(null);
-  const progress = useRef(Math.random() * Math.PI * 2); // Start at a random point in the orbit
+  const progress = useRef(getInitialOrbitOffset(planet.pl_name));
   
   // Scale distances for proportional spacing, ensuring a minimum distance from the central star
   const semiMajorAxis = planet.pl_orbsmax ? planet.pl_orbsmax * orbitScale : 15; 
@@ -168,7 +186,7 @@ function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: 
     );
     // return points in 3D (x, 0, z)
     return curve.getPoints(100).map(p => new THREE.Vector3(p.x, 0, p.y));
-  }, [semiMajorAxis, semiMinorAxis]);
+  }, [semiMajorAxis, semiMinorAxis, eccentricity]);
 
   // Planet speed (arbitrary scale for visual simulation)
   const speed = planet.pl_orbper ? (365 / planet.pl_orbper) * 0.2 : 0.05;
@@ -194,8 +212,13 @@ function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: 
 
   const pClass = classifyPlanet(planet);
   const visuals = getPlanetVisuals(planet);
-  const texture = useTexture(visuals.textureUrl);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = useTexture(visuals.textureUrl, (tex) => {
+    if (Array.isArray(tex)) {
+      tex.forEach(t => { t.colorSpace = THREE.SRGBColorSpace; });
+    } else {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    }
+  });
 
   const pathColor = isSelected ? pClass.color : "#9ca3af";
   const pathThickness = isSelected ? 2.5 : 1.5;
@@ -210,7 +233,7 @@ function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: 
         ref={planetRef}
         onClick={(e) => {
           e.stopPropagation();
-          setSelectedPlanet(planet);
+          setSelectedPlanet(planet as PlanetData);
         }}
         onPointerOver={() => document.body.style.cursor = 'pointer'}
         onPointerOut={() => document.body.style.cursor = 'auto'}
@@ -223,7 +246,7 @@ function PlanetOrbit({ planet, isAnimating, isSelected, orbitScale }: { planet: 
         <Billboard>
           <Text 
             position={[0, -1.2, 0]} 
-            fontSize={0.9} 
+            fontSize={1.08} 
             color={isSelected ? "#ffffff" : "#cbd5e1"} 
             anchorX="center" 
             anchorY="top"
@@ -241,13 +264,14 @@ function CameraResetter({ selectedStarHostname }: { selectedStarHostname: string
 
   useEffect(() => {
     camera.position.set(0.01, 80, 0);
+    // eslint-disable-next-line react-hooks/immutability
     camera.zoom = 1;
     camera.updateProjectionMatrix();
 
     if (controls) {
-      // @ts-ignore
+      // @ts-expect-error OrbitControls target
       controls.target.set(0, 0, 0);
-      // @ts-ignore
+      // @ts-expect-error OrbitControls update
       controls.update();
     }
   }, [selectedStarHostname, camera, controls]);
@@ -280,7 +304,7 @@ export function CenterPane() {
   );
 
   // Calculate maximum apocenter (farthest point from star) for exoplanets taking into account eccentricity
-  const getApo = (p: any) => (p.pl_orbsmax || 0) * (1 + (p.pl_orbeccen || 0));
+  const getApo = (p: Partial<PlanetData>) => (p.pl_orbsmax || 0) * (1 + (p.pl_orbeccen || 0));
   const validOrbits = starPlanets.map(getApo).filter(val => val > 0);
   const maxExoApo = validOrbits.length > 0 ? Math.max(...validOrbits) : 0.1;
 
@@ -294,10 +318,6 @@ export function CenterPane() {
     // Show the first enveloping planet
     solarBoundaryIdx = encirclingIndex;
   }
-  
-  // Guard: Always show at least up to Mars for terrestrial scale context
-  const marsIdx = 3; // Mercury, Venus, Earth, Mars
-  solarBoundaryIdx = Math.max(solarBoundaryIdx, marsIdx);
   
   const furthestSolarApo = getApo(SOLAR_SYSTEM[solarBoundaryIdx]);
   const solarBoundaryApo = furthestSolarApo;
@@ -329,21 +349,21 @@ export function CenterPane() {
       )}
 
       {planets.length > 0 && (
-         <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+         <div className="absolute top-4 right-4 z-20 flex flex-row gap-2">
            <button 
              onClick={() => setIsAnimating(!isAnimating)}
-             className="bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 backdrop-blur border border-slate-700 shadow-lg transition-all font-medium text-sm"
+             title={isAnimating ? 'Stop Animation' : 'Start Animation'}
+             className="bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 rounded-lg w-10 h-10 flex items-center justify-center backdrop-blur border border-slate-700 shadow-lg transition-all"
            >
              {isAnimating ? <Square className="w-4 h-4 fill-slate-300" /> : <Play className="w-4 h-4 fill-slate-300" />}
-             {isAnimating ? 'Stop Animation' : 'Start Animation'}
            </button>
            {selectedStarHostname !== 'Sun' && (
              <button 
                onClick={() => setShowSolarSystem(!showSolarSystem)}
-               className={`rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 backdrop-blur border shadow-lg transition-all font-medium text-sm ${showSolarSystem ? 'bg-indigo-600/90 border-indigo-500 hover:bg-indigo-500/90 text-white' : 'bg-slate-800/90 border-slate-700 hover:bg-slate-700/90 text-slate-200'}`}
+               title={showSolarSystem ? 'Hide Solar System' : 'Compare Solar System'}
+               className={`rounded-lg w-10 h-10 flex items-center justify-center backdrop-blur border shadow-lg transition-all ${showSolarSystem ? 'bg-indigo-600/90 border-indigo-500 hover:bg-indigo-500/90 text-white' : 'bg-slate-800/90 border-slate-700 hover:bg-slate-700/90 text-slate-200'}`}
              >
                <Sun className={`w-4 h-4 ${showSolarSystem ? 'text-white' : 'text-slate-300'}`} />
-               {showSolarSystem ? 'Hide Solar System' : 'Compare Solar System'}
              </button>
            )}
          </div>

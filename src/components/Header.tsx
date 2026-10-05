@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
-import { usePlanetStore } from '../store/usePlanetStore';
+import { usePlanetStore, type ViewMode } from '../store/usePlanetStore';
 import { searchStarSystem, searchStarsByDistanceRange, searchByPreset } from '../api/nasaApi';
 import { Search, Loader2, ChevronDown, Filter } from 'lucide-react';
 
@@ -27,7 +27,7 @@ const PRESET_STARS = [
 ];
 
 export function Header() {
-  const { searchQuery, setSearchQuery, setPlanets, setIsLoading, isLoading, setError, setSelectedStarHostname, setSelectedPlanet } = usePlanetStore();
+  const { viewMode, setViewMode, searchQuery, setSearchQuery, setPlanets, setIsLoading, isLoading, setError, setSelectedStarHostname, setSelectedPlanet } = usePlanetStore();
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [fromLy, setFromLy] = useState('0');
@@ -132,9 +132,15 @@ export function Header() {
         <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
           <div className="w-3 h-3 rounded-full bg-indigo-400 animate-pulse" />
         </div>
-        <h1 className="text-xl font-bold text-slate-200 tracking-wide">
-          Exoplanet Explorer
-        </h1>
+        <select 
+          value={viewMode}
+          onChange={(e) => setViewMode(e.target.value as ViewMode)}
+          className="bg-transparent text-xl font-bold text-slate-200 tracking-wide cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded border border-transparent hover:border-slate-700 hover:bg-slate-800/50 px-2 py-1 appearance-none pr-8 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-no-repeat bg-[right_8px_center]"
+        >
+          <option value="exoplanets" className="bg-slate-900 text-sm font-medium">Exoplanetas</option>
+          <option value="inner-solar" className="bg-slate-900 text-sm font-medium">Sistema Solar</option>
+          <option value="outer-solar" className="bg-slate-900 text-sm font-medium">Sistema Solar externo</option>
+        </select>
       </div>
 
       <div className="flex items-center gap-4 flex-1 justify-end max-w-4xl">

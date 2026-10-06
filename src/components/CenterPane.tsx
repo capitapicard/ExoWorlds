@@ -4,7 +4,7 @@ import { useTexture, OrbitControls, Stars, Line, Text, Billboard } from '@react-
 import * as THREE from 'three';
 import { usePlanetStore } from '../store/usePlanetStore';
 import type { PlanetData } from '../api/nasaApi';
-import { classifyPlanet, getPlanetVisuals } from '../utils/classification';
+import { classifyPlanet, classifyStar, getPlanetVisuals } from '../utils/classification';
 import { Orbit as OrbitIcon, Play, Square, Sun, Loader2 } from 'lucide-react';
 
 const SOLAR_SYSTEM = [
@@ -21,7 +21,8 @@ const SOLAR_SYSTEM = [
 function CentralStar({ planets }: { planets: Partial<PlanetData>[] }) {
   const starRef = useRef<THREE.Mesh>(null);
   const setSelectedPlanet = usePlanetStore(state => state.setSelectedPlanet);
-  
+  const starColor = classifyStar(planets[0]?.st_teff ?? null).color;
+
   useFrame(({ camera }) => {
     if (starRef.current) {
       const dist = camera.position.distanceTo(starRef.current.position);
@@ -41,13 +42,14 @@ function CentralStar({ planets }: { planets: Partial<PlanetData>[] }) {
       onPointerOut={() => document.body.style.cursor = 'auto'}
     >
       <sphereGeometry args={[0.8, 32, 32]} />
-      <meshStandardMaterial color="#fcd34d" emissive="#f59e0b" emissiveIntensity={2} toneMapped={false} />
+      {/* Unlit + no tone mapping so the hue matches the stellar map and the data desk exactly */}
+      <meshBasicMaterial color={starColor} toneMapped={false} />
       {planets.length > 0 && (
         <Billboard>
-          <Text 
-            position={[0, -1.2, 0]} 
-            fontSize={1.32} 
-            color="#fcd34d" 
+          <Text
+            position={[0, -1.2, 0]}
+            fontSize={1.32}
+            color={starColor}
             anchorX="center" 
             anchorY="top"
           >

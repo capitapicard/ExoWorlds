@@ -3,8 +3,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Text, Billboard, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { usePlanetStore } from '../store/usePlanetStore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Globe, LayoutGrid } from 'lucide-react';
 import { classifyStar } from '../utils/classification';
+import { StarGridView } from './StarGridView';
+
+type StellarViewMode = 'map' | 'grid';
 
 // Convert equatorial coordinates (RA/Dec/Dist) to 3D Cartesian
 function toCartesian(ra: number, dec: number, dist: number): [number, number, number] {
@@ -164,6 +167,7 @@ function SceneStars({ stars, selectedHostname, onSelectStar }: {
 
 export function StellarMapPane() {
   const { planets, selectedStarHostname, setSelectedStarHostname, setSelectedPlanet, isLoading } = usePlanetStore();
+  const [stellarView, setStellarView] = useState<StellarViewMode>('map');
 
   const stars = useMemo<StarPoint[]>(() => {
     const map = new Map<string, StarPoint>();
@@ -211,6 +215,24 @@ export function StellarMapPane() {
         )}
       </div>
 
+      <div className="absolute top-3 right-4 z-20 flex rounded-lg border border-slate-700 bg-slate-800/90 backdrop-blur shadow-lg overflow-hidden">
+        {([
+          { mode: 'map', icon: Globe, title: 'Stellar map' },
+          { mode: 'grid', icon: LayoutGrid, title: 'Star grid' },
+        ] as const).map(({ mode, icon: Icon, title }) => (
+          <button
+            key={mode}
+            onClick={() => setStellarView(mode)}
+            title={title}
+            className={`w-9 h-9 flex items-center justify-center transition-colors ${
+              stellarView === mode ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+        ))}
+      </div>
+
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -229,6 +251,9 @@ export function StellarMapPane() {
         </div>
       )}
 
+      {stellarView === 'grid' ? (
+        <StarGridView planets={planets} selectedHostname={selectedStarHostname} onSelectStar={handleSelectStar} />
+      ) : (
       <Canvas camera={{ position: [0, camDist * 0.4, camDist], fov: 50 }} style={{ width: '100%', height: '100%' }}>
         <color attach="background" args={['#000000']} />
         
@@ -258,6 +283,7 @@ export function StellarMapPane() {
           }}
         />
       </Canvas>
+      )}
     </div>
   );
 }
